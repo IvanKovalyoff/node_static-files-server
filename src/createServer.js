@@ -8,7 +8,7 @@ const PUBLIC_DIR = path.join(process.cwd(), 'public');
 
 function createServer() {
   const server = http.createServer((req, res) => {
-    const { pathname } = new URL(req.url, 'http://localhost');
+    let { pathname } = new URL(req.url, 'http://localhost');
 
     // 🚫 duplicated slashes
     if (pathname.startsWith('/file/') && pathname.includes('//')) {
@@ -22,6 +22,7 @@ function createServer() {
     if (pathname === '/file') {
       res.writeHead(200, { 'Content-Type': 'text/plain' });
       res.end('Hint: load files using /file/<path-to-file>');
+      pathname = '/file/';
 
       return;
     }
