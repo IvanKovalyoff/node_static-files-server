@@ -23,8 +23,6 @@ function createServer() {
       res.writeHead(200, { 'Content-Type': 'text/plain' });
       res.end('Hint: load files using /file/<path-to-file>');
       pathname = '/file/';
-
-      return;
     }
 
     // ℹ️ invalid routes
