@@ -7,8 +7,8 @@ const path = require('path');
 const PUBLIC_DIR = path.join(process.cwd(), 'public');
 
 function createServer() {
-  const server = http.createServer((req, res) => {
-    let { pathname } = new URL(req.url, 'http://localhost');
+  return http.createServer((req, res) => {
+    const pathname = req.url.split('?')[0];
 
     // 🚫 duplicated slashes
     if (pathname.startsWith('/file/') && pathname.includes('//')) {
@@ -18,41 +18,41 @@ function createServer() {
       return;
     }
 
-    // ℹ️ /file hint
+    // ℹ️ hint ONLY for /file
     if (pathname === '/file') {
       res.writeHead(200, { 'Content-Type': 'text/plain' });
-      res.end('Hint: load files using /file/<path-to-file>');
-      pathname = '/file/';
-    }
-
-    // ℹ️ invalid routes
-    if (!pathname.startsWith('/file/')) {
-      res.writeHead(400, { 'Content-Type': 'text/plain' });
       res.end('Hint: load files using /file/<path-to-file>');
 
       return;
     }
 
-    // map files
-    let relativePath = pathname.slice(6);
-
-    if (!relativePath) {
-      relativePath = 'index.html';
-    }
-
-    const filePath = path.join(PUBLIC_DIR, relativePath);
-    const resolvedPath = path.resolve(filePath);
-    const resolvedPublicDir = path.resolve(PUBLIC_DIR);
-
-    // 🚫 traversal protection
-    if (!resolvedPath.startsWith(resolvedPublicDir)) {
+    // 🚫 everything else outside /file/
+    if (!pathname.startsWith('/file/')) {
       res.writeHead(400, { 'Content-Type': 'text/plain' });
       res.end('Bad Request');
 
       return;
     }
 
-    fs.stat(filePath, (err, stats) => {
+    let relativePath = pathname.slice('/file/'.length);
+
+    if (!relativePath) {
+      relativePath = 'index.html';
+    }
+
+    const filePath = path.join(PUBLIC_DIR, relativePath);
+    const resolvedPublic = path.resolve(PUBLIC_DIR);
+    const resolvedFile = path.resolve(filePath);
+
+    // 🚫 traversal protection (filesystem-level)
+    if (!resolvedFile.startsWith(resolvedPublic + path.sep)) {
+      res.writeHead(400, { 'Content-Type': 'text/plain' });
+      res.end('Bad Request');
+
+      return;
+    }
+
+    fs.stat(resolvedFile, (err, stats) => {
       if (err || !stats.isFile()) {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
         res.end('Not Found');
@@ -60,16 +60,10 @@ function createServer() {
         return;
       }
 
-      fs.createReadStream(filePath)
-        .on('error', () => {
-          res.writeHead(500, { 'Content-Type': 'text/plain' });
-          res.end('Internal Server Error');
-        })
-        .pipe(res);
+      res.writeHead(200);
+      fs.createReadStream(resolvedFile).pipe(res);
     });
   });
-
-  return server;
 }
 
 module.exports = {
